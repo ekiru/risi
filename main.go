@@ -74,6 +74,18 @@ func main() {
 			data.Dirty = true
 
 		}
+	case "read":
+		if flag.NArg() != 2 {
+			usage(os.Stderr, "next index")
+			os.Exit(1)
+		}
+		i, feed := getFeed(data, flag.Arg(1))
+		howMany := feed.UnreadItems.Count()
+		feed.ReadItems = feed.ReadItems.Union(feed.UnreadItems)
+		feed.UnreadItems = rss.NewItemSet()
+		data.Feeds[i] = feed
+		data.Dirty = true
+		fmt.Printf("%d marked read\n", howMany)
 	case "subscribe":
 		if flag.NArg() != 2 {
 			usage(os.Stderr, "subscribe feed")
