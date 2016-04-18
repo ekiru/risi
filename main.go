@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"sort"
 	"strconv"
 	"time"
 
@@ -24,8 +23,8 @@ type Data struct {
 type Feed struct {
 	Url         string
 	LastChecked time.Time
-	ReadItems   []string // Guids of seen items, sorted.
-	UnreadItems []string
+	ReadItems *rss.ItemSet
+	UnreadItems *rss.ItemSet
 }
 
 func main() {
@@ -42,32 +41,38 @@ func main() {
 			usage(os.Stderr, "check index")
 			os.Exit(1)
 		}
-		i, err := strconv.Atoi(flag.Arg(1))
-		dieIfErr(err, "Feed indices must be integers")
-		if i < 0 || i >= len(data.Feeds) {
-			die("Feed indices out of range")
-		}
-		feed := data.Feeds[i]
+		i, feed := getFeed(data, flag.Arg(1))
+		feed.LastChecked = time.Now().Local()
 		doc, err := rss.ParseFromUrl(feed.Url)
 		dieIfErr(err, "Unable to check feed %s", feed.Url)
-		alreadyRead := feed.ReadItems
-		feed.ReadItems = nil
-		oldUnread := feed.UnreadItems
-		for _, item := range doc.Channel.Items {
-			if setContains(alreadyRead, item.Guid) {
-				feed.ReadItems = append(feed.ReadItems, item.Guid)
-			} else if !setContains(oldUnread, item.Guid) {
-				feed.UnreadItems = append(feed.UnreadItems, item.Guid)
-			}
-		}
-		fmt.Printf("%d unread items, %d new\n", len(feed.UnreadItems), len(feed.UnreadItems)-len(oldUnread))
-		sort.Strings(feed.UnreadItems)
-		sort.Strings(feed.ReadItems)
+		allItems := rss.NewItemSetFromSlice(doc.Channel.Items)
+		oldUnreadCount := feed.UnreadItems.Count()
+		feed.ReadItems = allItems.Intersection(feed.ReadItems)
+		feed.UnreadItems = feed.UnreadItems.Union(allItems.Without(feed.ReadItems))
+		fmt.Printf("%d unread items, %d new\n", feed.UnreadItems.Count(), feed.UnreadItems.Count()-oldUnreadCount)
 		data.Feeds[i] = feed
 		data.Dirty = true
 	case "feeds":
 		for i, feed := range data.Feeds {
-			fmt.Printf("%d\t%s\tlast checked at %s\n", i, feed.Url, feed.LastChecked.Format(time.UnixDate))
+			fmt.Printf("%d\t%s\t%d unread\tlast checked at %s\n",
+				i, feed.Url, feed.UnreadItems.Count(), feed.LastChecked.Format(time.UnixDate))
+		}
+	case "next":
+		if flag.NArg() != 2 {
+			usage(os.Stderr, "next index")
+			os.Exit(1)
+		}
+		i, feed := getFeed(data, flag.Arg(1))
+		if feed.UnreadItems.Count() == 0 {
+			fmt.Println("no unread")
+		} else {
+			item := feed.UnreadItems.Earliest()
+			feed.UnreadItems.Remove(item)
+			feed.ReadItems.Add(item)
+			fmt.Println(item.Link)
+			data.Feeds[i] = feed
+			data.Dirty = true
+
 		}
 	case "subscribe":
 		if flag.NArg() != 2 {
@@ -78,7 +83,8 @@ func main() {
 		data.Feeds = append(data.Feeds, Feed{
 			Url:         flag.Arg(1),
 			LastChecked: time.Unix(0, 0).Local(),
-			ReadItems:   []string{},
+			ReadItems:   rss.NewItemSet(),
+			UnreadItems: rss.NewItemSet(),
 		})
 	default:
 		die("Unrecognized command")
@@ -103,6 +109,16 @@ func setContains(set []string, elem string) bool {
 		}
 
 	}
+}
+
+func getFeed(data Data, is string) (i int, feed Feed) {
+	i, err := strconv.Atoi(flag.Arg(1))
+	dieIfErr(err, "Feed indices must be integers")
+	if i < 0 || i >= len(data.Feeds) {
+		die("Feed indices out of range")
+	}
+	feed = data.Feeds[i]
+	return
 }
 
 var datafileName string

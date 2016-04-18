@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"io/ioutil"
 	"net/http"
+	"time"
 )
 
 type FeedDoc struct {
@@ -23,7 +24,8 @@ type Item struct {
 	Title   string `xml:"title"`
 	Link    string `xml:"link"`
 	Guid    string `xml:"guid"`
-	PubDate string `xml:"pubDate"`
+	PubDateString string `xml:"pubDate"`
+	PubDate time.Time
 }
 
 func ParseFromUrl(url string) (feed FeedDoc, err error) {
@@ -37,5 +39,15 @@ func ParseFromUrl(url string) (feed FeedDoc, err error) {
 		return
 	}
 	err = xml.Unmarshal(buf, &feed)
+	if err != nil {
+		return
+	}
+	for i, item := range feed.Channel.Items {
+		item.PubDate, err = time.Parse("Mon, 2 Jan 2006 15:04:05 -0700", item.PubDateString)
+		if err != nil {
+			return
+		}
+		feed.Channel.Items[i] = item
+	}
 	return
 }
