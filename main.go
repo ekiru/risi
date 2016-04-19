@@ -37,42 +37,48 @@ func main() {
 	dieIfErr(err, "Unable to load database")
 	switch cmd := flag.Arg(0); cmd {
 	case "check":
-		if flag.NArg() != 2 {
-			usage(os.Stderr, "check index")
+		if flag.NArg() != 1 {
+			usage(os.Stderr, "check")
 			os.Exit(1)
 		}
-		i, feed := getFeed(data, flag.Arg(1))
-		feed.LastChecked = time.Now().Local()
-		doc, err := rss.ParseFromUrl(feed.Url)
-		dieIfErr(err, "Unable to check feed %s", feed.Url)
-		allItems := rss.NewItemSetFromSlice(doc.Channel.Items)
-		oldUnreadCount := feed.UnreadItems.Count()
-		feed.ReadItems = allItems.Intersection(feed.ReadItems)
-		feed.UnreadItems = feed.UnreadItems.Union(allItems.Without(feed.ReadItems))
-		fmt.Printf("%d unread items, %d new\n", feed.UnreadItems.Count(), feed.UnreadItems.Count()-oldUnreadCount)
-		data.Feeds[i] = feed
-		data.Dirty = true
+		for i, feed := range data.Feeds {
+			feed.LastChecked = time.Now().Local()
+			doc, err := rss.ParseFromUrl(feed.Url)
+			dieIfErr(err, "Unable to check feed %s", feed.Url)
+			allItems := rss.NewItemSetFromSlice(doc.Channel.Items)
+			oldUnreadCount := feed.UnreadItems.Count()
+			feed.ReadItems = allItems.Intersection(feed.ReadItems)
+			feed.UnreadItems = feed.UnreadItems.Union(allItems.Without(feed.ReadItems))
+			fmt.Printf("%s: %d unread items, %d new\n", feed.Url, feed.UnreadItems.Count(), feed.UnreadItems.Count()-oldUnreadCount)
+			data.Feeds[i] = feed
+			data.Dirty = true
+
+		}
 	case "feeds":
 		for i, feed := range data.Feeds {
 			fmt.Printf("%d\t%s\t%d unread\tlast checked at %s\n",
 				i, feed.Url, feed.UnreadItems.Count(), feed.LastChecked.Format(time.UnixDate))
 		}
 	case "next":
-		if flag.NArg() != 2 {
-			usage(os.Stderr, "next index")
+		if flag.NArg() > 2 {
+			usage(os.Stderr, "next [index]")
 			os.Exit(1)
 		}
-		i, feed := getFeed(data, flag.Arg(1))
-		if feed.UnreadItems.Count() == 0 {
-			fmt.Println("no unread")
+		if flag.NArg() == 2 {
+			i, feed := getFeed(data, flag.Arg(1))
+			nextInFeed(&data, i, feed)
 		} else {
-			item := feed.UnreadItems.Earliest()
-			feed.UnreadItems.Remove(item)
-			feed.ReadItems.Add(item)
-			fmt.Println(item.Link)
-			data.Feeds[i] = feed
-			data.Dirty = true
-
+			found := false
+			for i, feed := range data.Feeds {
+				if feed.UnreadItems.Count() != 0 {
+					nextInFeed(&data, i, feed)
+					found = true
+					break
+				}
+			}
+			if !found {
+				fmt.Println("no unread")
+			}
 		}
 	case "read":
 		if flag.NArg() != 2 {
@@ -119,6 +125,20 @@ func setContains(set []string, elem string) bool {
 		} else {
 			set = set[mid:]
 		}
+
+	}
+}
+
+func nextInFeed(data *Data, i int, feed Feed) {
+	if feed.UnreadItems.Count() == 0 {
+		fmt.Println("no unread")
+	} else {
+		item := feed.UnreadItems.Earliest()
+		feed.UnreadItems.Remove(item)
+		feed.ReadItems.Add(item)
+		fmt.Println(item.Link)
+		data.Feeds[i] = feed
+		data.Dirty = true
 
 	}
 }
