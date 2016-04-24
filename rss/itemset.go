@@ -56,6 +56,17 @@ func (set ItemSet) Intersection(other *ItemSet) *ItemSet {
 	return inter
 }
 
+func (set ItemSet) Latest() (latest Item) {
+	first := true
+	for _, item := range set.items {
+		if first || latest.PubDate.Before(item.PubDate) {
+			latest = item
+			first = false
+		}
+	}
+	return
+}
+
 func (set *ItemSet) Remove(item Item) {
 	delete(set.items, item.Guid)
 }

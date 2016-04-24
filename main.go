@@ -108,6 +108,20 @@ func main() {
 			ReadItems:   rss.NewItemSet(),
 			UnreadItems: rss.NewItemSet(),
 		})
+	case "unread":
+		if flag.NArg() != 2 {
+			usage(os.Stderr, "unread feed")
+			os.Exit(1)
+		}
+		data.Dirty = true
+		i, feed := getFeed(data, flag.Arg(1))
+		if feed.ReadItems.Count() == 0 {
+			die("Nothing to unread in that feed.")
+		}
+		item := feed.ReadItems.Latest()
+		feed.ReadItems.Remove(item)
+		feed.UnreadItems.Add(item)
+		data.Feeds[i] = feed
 	default:
 		die("Unrecognized command")
 	}
