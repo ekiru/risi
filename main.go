@@ -42,6 +42,10 @@ func main() {
 			os.Exit(1)
 		}
 		for i, feed := range data.Feeds {
+			if minutesAgo := time.Since(feed.LastChecked).Minutes(); minutesAgo < 60.0 {
+				fmt.Printf("%s: checked %d minutes ago\n", feed.Url, int64(minutesAgo))
+				continue
+			}
 			feed.LastChecked = time.Now().Local()
 			doc, err := rss.ParseFromUrl(feed.Url)
 			dieIfErr(err, "Unable to check feed %s", feed.Url)
