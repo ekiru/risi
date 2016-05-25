@@ -24,7 +24,7 @@ type Feed struct {
 	Url         string
 	Type string
 	LastChecked time.Time
-	ReadItems *rss.ItemSet
+	ReadItems   *rss.ItemSet
 	UnreadItems *rss.ItemSet
 }
 
