@@ -108,6 +108,15 @@ func main() {
 			ReadItems:   rss.NewItemSet(),
 			UnreadItems: rss.NewItemSet(),
 		})
+	case "unsubscribe":
+		if flag.NArg() != 2 {
+			usage(os.Stderr, "unsubscribe feed")
+			os.Exit(1)
+		}
+		i, _ := getFeed(data, flag.Arg(1))
+		data.Dirty = true
+		copy(data.Feeds[i:], data.Feeds[i+1:])
+		data.Feeds = data.Feeds[:len(data.Feeds)-1]
 	case "unread":
 		if flag.NArg() != 2 {
 			usage(os.Stderr, "unread feed")
