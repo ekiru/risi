@@ -22,6 +22,7 @@ type Data struct {
 
 type Feed struct {
 	Url         string
+	Type string
 	LastChecked time.Time
 	ReadItems *rss.ItemSet
 	UnreadItems *rss.ItemSet
@@ -47,9 +48,23 @@ func main() {
 				continue
 			}
 			feed.LastChecked = time.Now().Local()
-			doc, err := rss.ParseFromUrl(feed.Url)
-			dieIfErr(err, "Unable to check feed %s", feed.Url)
-			allItems := rss.NewItemSetFromSlice(doc.Channel.Items)
+			var allItems *rss.ItemSet
+			switch feed.Type {
+			case "rss":
+				allItems, err = getRssItems(feed.Url)
+				dieIfErr(err, "Unable to check RSS feed %s", feed.Url)
+			case "atom":
+				allItems, err = getAtomItems(feed.Url)
+				dieIfErr(err, "Unable to check Atom feed %s", feed.Url)
+			default: // haven't parsed it successfully yet. try rss then atom.
+				allItems, err = getRssItems(feed.Url)
+				if err == nil {
+					feed.Type = "rss"
+				} else if allItems, err = getAtomItems(feed.Url); err == nil {
+					feed.Type = "atom"
+				}
+				dieIfErr(err, "Unable to check feed %s", feed.Url)
+			}
 			oldUnreadCount := feed.UnreadItems.Count()
 			feed.ReadItems = allItems.Intersection(feed.ReadItems)
 			feed.UnreadItems = feed.UnreadItems.Union(allItems.Without(feed.ReadItems))
@@ -137,6 +152,24 @@ func main() {
 	if data.Dirty {
 		dieIfErr(saveData(data), "Unable to save database")
 	}
+}
+
+func getRssItems(url string) (items *rss.ItemSet, err error) {
+	doc, err := rss.ParseFromUrl(url)
+	if err != nil {
+		return
+	}
+	items = rss.NewItemSetFromSlice(doc.Channel.Items)
+	return
+}
+
+func getAtomItems(url string) (items *rss.ItemSet, err error) {
+	doc, err := rss.ParseFromAtomUrl(url)
+	if err != nil {
+		return
+	}
+	items = rss.NewItemSetFromAtomSlice(doc.Entries)
+	return
 }
 
 func setContains(set []string, elem string) bool {

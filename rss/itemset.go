@@ -20,6 +20,20 @@ func NewItemSetFromSlice(items []Item) *ItemSet {
 	return set
 }
 
+func NewItemSetFromAtomSlice(entries []AtomEntry) *ItemSet {
+	set := NewItemSet()
+	for _, entry := range entries {
+		item := Item{
+			Title: entry.Title,
+			Link: entry.Link,
+			Guid: entry.Id,
+			PubDate: entry.PubDate,
+		}
+		set.Add(item)
+	}
+	return set
+}
+
 func (set *ItemSet) Add(item Item) {
 	if !set.Contains(item) {
 		set.items[item.Guid] = item
