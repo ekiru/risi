@@ -13,8 +13,10 @@ type AtomFeedDoc struct {
 }
 
 type AtomEntry struct {
-	Title         string `xml:"title"`
-	Link          string `xml:"link"`
+	Title string `xml:"title"`
+	Link  struct {
+		Href string `xml:",attr"`
+	} `xml:"link"`
 	Id            string `xml:"id"`
 	PubDateString string `xml:"published"`
 	PubDate       time.Time

@@ -24,9 +24,9 @@ func NewItemSetFromAtomSlice(entries []AtomEntry) *ItemSet {
 	set := NewItemSet()
 	for _, entry := range entries {
 		item := Item{
-			Title: entry.Title,
-			Link: entry.Link,
-			Guid: entry.Id,
+			Title:   entry.Title,
+			Link:    entry.Link.Href,
+			Guid:    entry.Id,
 			PubDate: entry.PubDate,
 		}
 		set.Add(item)
