@@ -22,7 +22,7 @@ type Data struct {
 
 type Feed struct {
 	Url         string
-	Type string
+	Type        string
 	LastChecked time.Time
 	ReadItems   *rss.ItemSet
 	UnreadItems *rss.ItemSet
@@ -38,12 +38,15 @@ func main() {
 	dieIfErr(err, "Unable to load database")
 	switch cmd := flag.Arg(0); cmd {
 	case "check":
-		if flag.NArg() != 1 {
+		force := false
+		if flag.NArg() == 2 && flag.Arg(1) == "-f" {
+			force = true
+		} else if flag.NArg() != 1 {
 			usage(os.Stderr, "check")
 			os.Exit(1)
 		}
 		for i, feed := range data.Feeds {
-			if minutesAgo := time.Since(feed.LastChecked).Minutes(); minutesAgo < 60.0 {
+			if minutesAgo := time.Since(feed.LastChecked).Minutes(); !force && minutesAgo < 60.0 {
 				fmt.Printf("%s: checked %d minutes ago\n", feed.Url, int64(minutesAgo))
 				continue
 			}
