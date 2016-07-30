@@ -21,11 +21,11 @@ type Channel struct {
 }
 
 type Item struct {
-	Title   string `xml:"title"`
-	Link    string `xml:"link"`
-	Guid    string `xml:"guid"`
+	Title         string `xml:"title"`
+	Link          string `xml:"link"`
+	Guid          string `xml:"guid"`
 	PubDateString string `xml:"pubDate"`
-	PubDate time.Time
+	PubDate       time.Time
 }
 
 func ParseFromUrl(url string) (feed FeedDoc, err error) {
@@ -45,7 +45,10 @@ func ParseFromUrl(url string) (feed FeedDoc, err error) {
 	for i, item := range feed.Channel.Items {
 		item.PubDate, err = time.Parse("Mon, 2 Jan 2006 15:04:05 -0700", item.PubDateString)
 		if err != nil {
-			return
+			item.PubDate, err = time.Parse("Mon, 2 Jan 2006 15:04:05 PDT", item.PubDateString)
+			if err != nil {
+				return
+			}
 		}
 		feed.Channel.Items[i] = item
 	}
