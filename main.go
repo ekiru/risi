@@ -55,10 +55,16 @@ func main() {
 			switch feed.Type {
 			case "rss":
 				allItems, err = getRssItems(feed.Url)
-				dieIfErr(err, "Unable to check RSS feed %s", feed.Url)
+				if err != nil {
+					logErr(err, "Unable to check RSS feed %s", feed.Url)
+					continue
+				}
 			case "atom":
 				allItems, err = getAtomItems(feed.Url)
-				dieIfErr(err, "Unable to check Atom feed %s", feed.Url)
+				if err != nil {
+					logErr(err, "Unable to check Atom feed %s", feed.Url)
+					continue
+				}
 			default: // haven't parsed it successfully yet. try rss then atom.
 				allItems, err = getRssItems(feed.Url)
 				if err == nil {
@@ -66,7 +72,10 @@ func main() {
 				} else if allItems, err = getAtomItems(feed.Url); err == nil {
 					feed.Type = "atom"
 				}
-				dieIfErr(err, "Unable to check feed %s", feed.Url)
+				if err != nil {
+					logErr(err, "Unable to check feed %s", feed.Url)
+					continue
+				}
 			}
 			oldUnreadCount := feed.UnreadItems.Count()
 			feed.ReadItems = allItems.Intersection(feed.ReadItems)
@@ -253,14 +262,18 @@ func die(s string) {
 
 func dieIfErr(err error, format string, vs ...interface{}) {
 	if err != nil {
-		if format != "" {
-			fmt.Fprintf(os.Stderr, format, vs...)
-		} else {
-			fmt.Print("An error occurred")
-		}
-		fmt.Fprintf(os.Stderr, ": %s\n", err.Error())
+		logErr(err, format, vs)
 		os.Exit(2)
 	}
+}
+
+func logErr(err error, format string, vs ...interface{}) {
+	if format != "" {
+		fmt.Fprintf(os.Stderr, format, vs...)
+	} else {
+		fmt.Print("An error occurred")
+	}
+	fmt.Fprintf(os.Stderr, ": %s\n", err.Error())
 }
 
 func usage(w io.Writer, args string) {
